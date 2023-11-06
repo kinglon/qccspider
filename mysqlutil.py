@@ -135,7 +135,7 @@ class MysqlUtil:
             DELETE FROM {}
             WHERE case_id = %s
         """.format(MysqlUtil.case_table_name)
-        delete_data = case.case_id
+        delete_data = [case.case_id]
 
         # Define the INSERT statement
         insert_query = """
@@ -171,12 +171,12 @@ class MysqlUtil:
                     DELETE FROM {}
                     WHERE company_id = %s
                 """.format(MysqlUtil.share_holder_table_name)
-        delete_share_holder_data = company.company_id
+        delete_share_holder_data = [company.company_id]
         delete_company_query = """
                             DELETE FROM {}
                             WHERE company_id = %s
                         """.format(MysqlUtil.company_table_name)
-        delete_company_data = company.company_id
+        delete_company_data = [company.company_id]
 
         # Define the INSERT statement
         insert_share_holder_query = """

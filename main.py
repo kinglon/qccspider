@@ -4,9 +4,9 @@ from mysqlutil import MysqlUtil
 import time
 
 
-def ignore_case(company):
+def ignore_case(case_id, company):
     if company.status.find('在营') == -1 and company.status.find('开业') == -1 and company.status.find('在册') == -1:
-        print('ignore case because the status of the company is {}'.format(company.status))
+        print('{} is ignored, the status of the company is {}'.format(case_id, company.status))
         return True
 
     all_company = True
@@ -15,7 +15,7 @@ def ignore_case(company):
             all_company = False
             break
     if all_company:
-        print('ignore case because the share holders of the company {} are all companies'.format(company.company_name))
+        print('{} is ignored, all share holders of {} are companies'.format(case_id, company.company_name))
         return True
 
     return False
@@ -55,13 +55,13 @@ def main():
                         time.sleep(Setting.get().req_interval)
                         case_page_number += 1
                         is_success, case_list, has_next_case_page = qcc_util.get_case_list(
-                            case_page_number, company.company_id)
+                            case_page_number, company)
                         if not is_success:
                             return
 
                         for case in case_list:
-                            if case.unfulfilled_amount < 1000000:
-                                print('ignore case because the unfulfilled amount of the case {} is less than 1000000'.format(case.case_id))
+                            if int(case.unfulfilled_amount) < 1000000:
+                                print('{} is ignored, the unfulfilled amount is less than 1000000'.format(case.case_id))
                                 continue
 
                             time.sleep(Setting.get().req_interval)
@@ -73,12 +73,13 @@ def main():
                             if not is_success:
                                 return
 
-                            if ignore_case(judgment_debtor) or ignore_case(judgment_creditor):
-                                return
+                            if ignore_case(case.case_id, judgment_debtor) or ignore_case(case.case_id, judgment_creditor):
+                                continue
 
                             MysqlUtil.insert_company(judgment_debtor)
                             MysqlUtil.insert_company(judgment_creditor)
                             MysqlUtil.insert_case(case)
+                            print('insert {}'.format(case.case_id))
 
 
 if __name__ == "__main__":

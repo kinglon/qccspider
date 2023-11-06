@@ -52,6 +52,7 @@ class QccUtil:
             filter_string = '{"f":["VMN","N_SBKP2","ZX"],"r":[{"pr":"%s","cc":[%s]}]}' % (region['pr'], region['cc'])
             body = {'searchKey': key, 'pageIndex': page_number, 'pageSize': 20, 'filter': filter_string}
             body = json.dumps(body, ensure_ascii=False)
+            body = body.replace(' ','')
             hash1, hash2 = QccUtil.calc_hash(uri, body, self.tid)
             headers = {
                 'Content-Type': 'application/json',
@@ -85,10 +86,9 @@ class QccUtil:
     def get_case_list(self, page_number, company_id):
         error_result = (False, [], False)
         try:
-            uri = '/api/datalist/endexecutioncaselist'
-            query_string = 'isNewAgg=true&keyNo={}&pageIndex={}'.format(company_id, page_number)
-            url = self.host + uri + '?' + query_string
-            hash1, hash2 = QccUtil.calc_hash(uri, query_string, self.tid)
+            uri = '/api/datalist/endexecutioncaselist?isNewAgg=true&keyNo={}&pageIndex={}'.format(company_id, page_number)
+            url = self.host + uri
+            hash1, hash2 = QccUtil.calc_hash(uri, '{}', self.tid)
             headers = {
                 'Accept': 'application/json, text/plain, */*',
                 'Referer': self.host + '/csusong/34ecbc151474af17678d3fc817fcc956.html',
@@ -104,29 +104,33 @@ class QccUtil:
                 case_list = []
                 root = json.loads(response.content.decode('utf-8'))
                 for case_json in root['data']:
-                    judgment_debtor: str = case_json['NameAndKeyNo']['Name']
+                    if len(case_json['NameAndKeyNo']) == 0 or len(case_json['SqrInfo']) == 0:
+                        continue
+                    judgment_debtor: str = case_json['NameAndKeyNo'][0]['Name']
                     if judgment_debtor.find('有限公司') == -1:
                         continue
-                    judgment_creditor: str = case_json['SqrInfo']['Name']
+                    judgment_creditor: str = case_json['SqrInfo'][0]['Name']
                     if judgment_creditor.find('有限公司') == -1:
                         continue
 
                     case = Case()
-                    case.case_id = case_json['CaseId']
+                    case.case_id = case_json['CaseNo']
                     local_time = datetime.datetime.fromtimestamp(case_json['EndDate'])
                     case.finality_date = local_time.strftime("%Y-%m-%d")
                     case.executing_court = case_json['Court']
-                    case.judgment_debtor = case_json['NameAndKeyNo']['KeyNo']
-                    case.judgment_creditor = case_json['SqrInfo']['KeyNo']
+                    case.judgment_debtor = case_json['NameAndKeyNo'][0]['KeyNo']
+                    case.judgment_creditor = case_json['SqrInfo'][0]['KeyNo']
                     case.unfulfilled_amount = case_json['FailureAct']
-                    print(case)
+                    print('case: {}'.format(case.case_id))
                     case_list.append(case)
 
-                total_records = root['pageInfo']['total']
-                page_size = root['pageInfo']['pageSize']
-                page_index = root['pageInfo']['pageIndex']
-                page_count = (total_records - 1) // page_size + 1
-                has_next_page = page_index < page_count
+                has_next_page = False
+                if 'total' in root['pageInfo']:
+                    total_records = root['pageInfo']['total']
+                    page_size = root['pageInfo']['pageSize']
+                    page_index = root['pageInfo']['pageIndex']
+                    page_count = (total_records - 1) // page_size + 1
+                    has_next_page = page_index < page_count
                 return True, case_list, has_next_page
         except requests.exceptions.RequestException as e:
             print("failed to get the case list, error is ", e)
@@ -149,7 +153,7 @@ class QccUtil:
                 return error_result
             else:
                 html_content = response.content.decode('utf-8')
-                start_index = html_content.find('window.__INITIAL_STATE__ = ') + len('window.__INITIAL_STATE__ = ') + 1
+                start_index = html_content.find('window.__INITIAL_STATE__=') + len('window.__INITIAL_STATE__=')
                 end_index = html_content.find('};', start_index) + 1
                 json_string = html_content[start_index: end_index]
                 root = json.loads(json_string)
@@ -268,8 +272,8 @@ class QccUtil:
 
 
 def test():
-    uri = '/api/search/searchMulti'
-    body = r'{"searchKey":"金融","pageIndex":1,"pageSize":20,"filter":"{\"f\":[\"VMN\",\"N_SBKP2\",\"ZX\"],\"r\":[{\"pr\":\"GD\",\"cc\":[440100]}]}"}'
+    uri = '/api/datalist/endexecutioncaselist?isnewagg=true&keyno=34ecbc151474af17678d3fc817fcc956&pageindex=1'
+    body = '{}'
     tid = '8870f3fecc389da61e700132ffbb6365'
     qcc_util = QccUtil()
     hash1, hash2 = qcc_util.calc_hash(uri, body, tid)
