@@ -23,10 +23,10 @@ def ignore_case(case_id, company):
 
 def main():
     if not MysqlUtil.connect():
-        return
+        return False
 
     if not MysqlUtil.create_table_if_need():
-        return
+        return False
 
     filter_keys = Setting.get().filter.key
     filter_regions = Setting.get().filter.region
@@ -36,7 +36,7 @@ def main():
             qcc_util = QccUtil()
             time.sleep(Setting.get().req_interval)
             if not qcc_util.get_basic_info():
-                return
+                return False
 
             has_next_company_page = True
             company_page_number = 0
@@ -46,7 +46,7 @@ def main():
                 is_success, company_list, has_next_company_page = qcc_util.get_company_list(
                     company_page_number, filter_key, filter_region)
                 if not is_success:
-                    return
+                    return False
 
                 for company in company_list:
                     has_next_case_page = True
@@ -57,7 +57,7 @@ def main():
                         is_success, case_list, has_next_case_page = qcc_util.get_case_list(
                             case_page_number, company)
                         if not is_success:
-                            return
+                            return False
 
                         for case in case_list:
                             if int(case.unfulfilled_amount) < 1000000:
@@ -67,11 +67,11 @@ def main():
                             time.sleep(Setting.get().req_interval)
                             is_success, judgment_debtor = qcc_util.get_company_info(case.judgment_debtor)
                             if not is_success:
-                                return
+                                return False
                             time.sleep(Setting.get().req_interval)
                             is_success, judgment_creditor = qcc_util.get_company_info(case.judgment_creditor)
                             if not is_success:
-                                return
+                                return False
 
                             if ignore_case(case.case_id, judgment_debtor) or ignore_case(case.case_id, judgment_creditor):
                                 continue
@@ -80,9 +80,10 @@ def main():
                             MysqlUtil.insert_company(judgment_creditor)
                             MysqlUtil.insert_case(case)
                             print('insert {}'.format(case.case_id))
+    return True
 
 
 if __name__ == "__main__":
     while True:
-        main()
-        time.sleep(60)
+        if not main():
+            time.sleep(Setting.get().next_interval)

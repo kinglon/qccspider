@@ -28,6 +28,7 @@ class Setting:
 
     def __init__(self):
         self.req_interval = 5
+        self.next_interval = 24*3600
         self.max_page_index = 250
         self.cookie = {}
         self.filter = Filter()
@@ -42,6 +43,7 @@ class Setting:
             root = json.loads(json_data)
 
             self.req_interval = root['req_interval']
+            self.next_interval = root['next_interval'] * 3600
             self.max_page_index = root['max_page_index']
 
             self.cookie['acw_tc'] = root['cookie']['acw_tc']
