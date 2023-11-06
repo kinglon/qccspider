@@ -5,7 +5,7 @@ from setting import Setting
 class MysqlUtil:
     connection = None
 
-    case_table_name = 'case'
+    case_table_name = 'anjian'
 
     company_table_name = 'company'
 
@@ -13,7 +13,9 @@ class MysqlUtil:
 
     @staticmethod
     def connect():
-        connection = mysql.connector.connect(
+        MysqlUtil.__create_database_if_need()
+
+        MysqlUtil.connection = mysql.connector.connect(
             host=Setting.get().mysql.host,
             port=Setting.get().mysql.port,
             user=Setting.get().mysql.user,
@@ -21,11 +23,43 @@ class MysqlUtil:
             database=Setting.get().mysql.database
         )
 
-        if not connection.is_connected():
+        if not MysqlUtil.connection.is_connected():
             print('failed to connect the mysql server')
             return False
         else:
             return True
+
+    @staticmethod
+    def __create_database_if_need():
+        # Establish a connection to the MySQL server
+        conn = mysql.connector.connect(
+            host=Setting.get().mysql.host,
+            port=Setting.get().mysql.port,
+            user=Setting.get().mysql.user,
+            password=Setting.get().mysql.password,
+        )
+
+        # Create a cursor object to execute SQL queries
+        cursor = conn.cursor()
+
+        # Check if the database exists
+        cursor.execute("SHOW DATABASES")
+        databases = cursor.fetchall()
+        database_exists = False
+
+        for database in databases:
+            if database[0] == Setting.get().mysql.database:
+                database_exists = True
+                break
+
+        # Create the "qcc" database if it doesn't exist
+        if not database_exists:
+            cursor.execute("CREATE DATABASE {}".format(Setting.get().mysql.database))
+            print("Database {} created successfully.".format(Setting.get().mysql.database))
+
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
 
     @staticmethod
     def create_table_if_need():
@@ -60,7 +94,7 @@ class MysqlUtil:
                         region VARCHAR(100),
                         rc VARCHAR(40),
                         pc VARCHAR(40),
-                        status VARCHAR(40),
+                        status VARCHAR(40)
                     )
         """.format(MysqlUtil.company_table_name)
 

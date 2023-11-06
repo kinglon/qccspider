@@ -20,13 +20,10 @@ class MySqlSetting:
 class Setting:
     __instance = None
 
-    def __new__(cls, *args, **kwargs):
-        if not cls.__instance:
-            cls.__instance = super().__new__(cls, *args, **kwargs)
-        return cls.__instance
-
     @staticmethod
     def get():
+        if Setting.__instance is None:
+            Setting.__instance = Setting()
         return Setting.__instance
 
     def __init__(self):
@@ -38,7 +35,7 @@ class Setting:
         self.__load()
 
     def __load(self):
-        current_file_path = os.path.abspath(__file__)
+        current_file_path = os.path.dirname(os.path.abspath(__file__))
         config_file_path = os.path.join(current_file_path, r'configs\configs.json')
         with open(config_file_path, 'r', encoding='utf-8') as file:
             json_data = file.read()
@@ -58,5 +55,5 @@ class Setting:
 
             self.mysql.host = root['mysql']['host']
             self.mysql.port = root['mysql']['port']
-            self.mysql.admin = root['mysql']['admin']
+            self.mysql.admin = root['mysql']['user']
             self.mysql.password = root['mysql']['password']

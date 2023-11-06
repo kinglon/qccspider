@@ -49,9 +49,10 @@ class QccUtil:
         try:
             uri = '/api/search/searchMulti'
             url = self.host + uri
-            filter_string = '{"f":["VMN","N_SBKP2","ZX"],"r":{"pr":"{}","cc":[{}]}}'.format(region['pr'], region['cc'])
+            filter_string = '{"f":["VMN","N_SBKP2","ZX"],"r":[{"pr":"%s","cc":[%s]}]}' % (region['pr'], region['cc'])
             body = {'searchKey': key, 'pageIndex': page_number, 'pageSize': 20, 'filter': filter_string}
-            hash1, hash2 = QccUtil.__calc_hash(uri, body, self.tid)
+            body = json.dumps(body, ensure_ascii=False)
+            hash1, hash2 = QccUtil.calc_hash(uri, body, self.tid)
             headers = {
                 'Content-Type': 'application/json',
                 'Accept': '*/*',
@@ -60,7 +61,7 @@ class QccUtil:
                 hash1: hash2
             }
             self.__append_headers(headers)
-            response = requests.post(url, headers=headers, json=body)
+            response = requests.post(url, headers=headers, data=body.encode('utf-8'))
             if not response.ok:
                 print("failed to get the company list info, error is ", response)
                 return error_result
@@ -87,7 +88,7 @@ class QccUtil:
             uri = '/api/datalist/endexecutioncaselist'
             query_string = 'isNewAgg=true&keyNo={}&pageIndex={}'.format(company_id, page_number)
             url = self.host + uri + '?' + query_string
-            hash1, hash2 = QccUtil.__calc_hash(uri, query_string, self.tid)
+            hash1, hash2 = QccUtil.calc_hash(uri, query_string, self.tid)
             headers = {
                 'Accept': 'application/json, text/plain, */*',
                 'Referer': self.host + '/csusong/34ecbc151474af17678d3fc817fcc956.html',
@@ -188,7 +189,7 @@ class QccUtil:
         return output_string
 
     @staticmethod
-    def __calc_hash(uri, body, tid):
+    def calc_hash(uri, body, tid):
         uri = uri.lower()
         body = body.lower()
         uri_encode = QccUtil.__encode_string(uri + uri)
@@ -204,7 +205,9 @@ class QccUtil:
 
     def __append_headers(self, headers):
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-        headers['Cookie'] = Setting.get().get_qcc_cookie()
+        headers['Cookie'] = ''
+        for key, value in Setting.get().cookie.items():
+            headers['Cookie'] += '{}={};'.format(key, value)
         headers['Origin'] = self.host
         headers['Sec-Ch-Ua-Platform'] = '"Windows"'
         headers['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8'
@@ -262,3 +265,17 @@ class QccUtil:
     def __get_company_region(root):
         area = root['company']['companyDetail']['Area']
         return area['Province'] + area['City'] + area['County']
+
+
+def test():
+    uri = '/api/search/searchMulti'
+    body = r'{"searchKey":"金融","pageIndex":1,"pageSize":20,"filter":"{\"f\":[\"VMN\",\"N_SBKP2\",\"ZX\"],\"r\":[{\"pr\":\"GD\",\"cc\":[440100]}]}"}'
+    tid = '8870f3fecc389da61e700132ffbb6365'
+    qcc_util = QccUtil()
+    hash1, hash2 = qcc_util.calc_hash(uri, body, tid)
+    print(hash1)
+    print(hash2)
+
+
+if __name__ == "__main__":
+    test()
