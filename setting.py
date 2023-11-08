@@ -57,5 +57,5 @@ class Setting:
 
             self.mysql.host = root['mysql']['host']
             self.mysql.port = root['mysql']['port']
-            self.mysql.admin = root['mysql']['user']
+            self.mysql.user = root['mysql']['user']
             self.mysql.password = root['mysql']['password']
