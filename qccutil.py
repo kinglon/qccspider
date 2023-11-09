@@ -3,6 +3,7 @@ import hmac
 import requests
 import json
 import datetime
+import time
 from setting import Setting
 from dataitem import Case
 from dataitem import Company
@@ -114,6 +115,7 @@ class QccUtil:
                         continue
 
                     case = Case()
+                    case.collect_time = int(time.time())
                     case.case_id = case_json['CaseNo']
                     local_time = datetime.datetime.fromtimestamp(case_json['EndDate'])
                     case.finality_date = local_time.strftime("%Y-%m-%d")

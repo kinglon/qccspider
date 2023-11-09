@@ -1,0 +1,33 @@
+import sys
+import os
+import datetime
+
+
+class PrintStream:
+    def __init__(self, streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
+class LogUtil:
+    @staticmethod
+    def enable():
+        current_file_path = os.path.dirname(os.path.abspath(__file__))
+        log_path = os.path.join(current_file_path, 'logs')
+        os.makedirs(log_path, exist_ok=True)
+
+        current_date = datetime.datetime.now()
+        log_file_name = 'main_{}{}{}.log'.format(current_date.year, current_date.month, current_date.day)
+        log_file_path = os.path.join(log_path, log_file_name)
+        log_stream = open(log_file_path, 'a')
+        sys.stdout = PrintStream([sys.stdout, log_stream])
+        sys.stderr = PrintStream([sys.stderr, log_stream])
+        print('\r\n\r\nbegin to log')

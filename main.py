@@ -1,6 +1,7 @@
 from setting import Setting
 from qccutil import QccUtil
 from mysqlutil import MysqlUtil
+from logutil import LogUtil
 import time
 
 
@@ -28,6 +29,7 @@ def main():
     if not MysqlUtil.create_table_if_need():
         return False
 
+    collect_all = Setting.get().collect_all
     filter_keys = Setting.get().filter.key
     filter_regions = Setting.get().filter.region
     for filter_key in filter_keys:
@@ -60,7 +62,7 @@ def main():
                             return False
 
                         for case in case_list:
-                            if int(case.unfulfilled_amount) < 1000000:
+                            if not collect_all and int(case.unfulfilled_amount) < Setting.get().unfulfilled_amount:
                                 print('{} is ignored, the unfulfilled amount is less than 1000000'.format(case.case_id))
                                 continue
 
@@ -73,7 +75,7 @@ def main():
                             if not is_success:
                                 return False
 
-                            if ignore_case(case.case_id, judgment_debtor) or ignore_case(case.case_id, judgment_creditor):
+                            if not collect_all and ignore_case(case.case_id, judgment_debtor) or ignore_case(case.case_id, judgment_creditor):
                                 continue
 
                             MysqlUtil.insert_company(judgment_debtor)
@@ -84,6 +86,11 @@ def main():
 
 
 if __name__ == "__main__":
+    LogUtil.enable()
     while True:
         if not main():
+            print('failed to collect all data, it will continue after 60 seconds')
+            time.sleep(60)
+        else:
+            print('finish to collect all data, wait for {} hours'.format(Setting.get().next_interval/3600))
             time.sleep(Setting.get().next_interval)

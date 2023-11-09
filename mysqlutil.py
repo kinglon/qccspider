@@ -76,6 +76,7 @@ class MysqlUtil:
             CREATE TABLE IF NOT EXISTS {} (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 case_id VARCHAR(40),
+                collect_time INT,
                 judgment_debtor VARCHAR(40),
                 judgment_creditor VARCHAR(40),
                 unfulfilled_amount VARCHAR(40),
@@ -139,10 +140,10 @@ class MysqlUtil:
 
         # Define the INSERT statement
         insert_query = """
-            INSERT INTO {} (case_id, judgment_debtor, judgment_creditor, unfulfilled_amount, executing_court, finality_date) 
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO {} (case_id, collect_time, judgment_debtor, judgment_creditor, unfulfilled_amount, executing_court, finality_date) 
+            VALUES (%s, %d, %s, %s, %s, %s, %s)
             """.format(MysqlUtil.case_table_name)
-        insert_data = (case.case_id, case.judgment_debtor, case.judgment_creditor, case.unfulfilled_amount, case.executing_court, case.finality_date)
+        insert_data = (case.case_id, case.collect_time, case.judgment_debtor, case.judgment_creditor, case.unfulfilled_amount, case.executing_court, case.finality_date)
 
         # Execute the SQL statement
         cursor.execute(delete_query, delete_data)

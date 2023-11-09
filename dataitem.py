@@ -1,4 +1,3 @@
-
 class Company:
     def __init__(self):
         # 公司ID
@@ -45,6 +44,9 @@ class Case:
     def __init__(self):
         # 案号
         self.case_id = ''
+
+        # 采集时间戳 UTC
+        self.collect_time = 0
 
         # 被执行人（公司ID）
         self.judgment_debtor = ''
