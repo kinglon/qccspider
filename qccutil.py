@@ -151,7 +151,7 @@ class QccUtil:
             self.__append_headers(headers)
             response = requests.get(url, headers=headers)
             if not response.ok:
-                print("failed to get the company info info, error is ", response)
+                print("failed to get the company info, error is ", response)
                 return error_result
             else:
                 html_content = response.content.decode('utf-8')
@@ -255,6 +255,8 @@ class QccUtil:
             phone = item['Tel']
             if self.__is_mobile_number(phone):
                 phone_list.append(phone)
+                if len(phone_list) >= 10:
+                    break
         return str(phone_list)
 
     # 获取公司的法定代表人

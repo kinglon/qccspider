@@ -1,5 +1,7 @@
 {
-    "req_interval":5,
+    "req_interval":12,
+
+    "error_wait_interval": 60,
 
     "next_interval":24,
     
@@ -10,7 +12,7 @@
     "collect_all": true,
     
     "cookie":{
-        "acw_tc":"7033782316990516754753640e03353fed535cdc99d9193c5b477d63f2",
+        "acw_tc":"7033781b16995259407403438e036655fc296110c5bf8cb23a9b5fe470",
         "QCCSESSID":"be60be5cc74d0be98fc65bc81a",
         "qcc_did":"303cf1c1-52fa-4850-bed0-ee3c190ecde8"
     },

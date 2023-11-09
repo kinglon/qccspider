@@ -141,7 +141,7 @@ class MysqlUtil:
         # Define the INSERT statement
         insert_query = """
             INSERT INTO {} (case_id, collect_time, judgment_debtor, judgment_creditor, unfulfilled_amount, executing_court, finality_date) 
-            VALUES (%s, %d, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """.format(MysqlUtil.case_table_name)
         insert_data = (case.case_id, case.collect_time, case.judgment_debtor, case.judgment_creditor, case.unfulfilled_amount, case.executing_court, case.finality_date)
 
