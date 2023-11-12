@@ -1,1 +1,10 @@
-{"company_list": []}
+{
+  "state": [{
+    "filter_key": "",
+    "filter_region": {"pr":"","cc":""},
+    "current_company_page_index":1,
+    "current_company_id": "",
+    "current_case_page_index": 1,
+    "current_case_id": ""
+  }]
+}

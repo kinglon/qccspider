@@ -4,6 +4,7 @@ from mysqlutil import MysqlUtil
 from logutil import LogUtil
 from stateutil import StateUtil
 import time
+import random
 
 
 def ignore_case(case_id, company):
@@ -23,6 +24,112 @@ def ignore_case(case_id, company):
     return False
 
 
+def get_request_interval_seconds():
+    return random.randint(10, Setting.get().req_interval)
+
+def get_company_info_by_request(qcc_util, company_id):
+    print('get the information of the company {} by request'.format(company_id))
+    while True:
+        time.sleep(get_request_interval_seconds())
+        is_success, company = qcc_util.get_company_info(company_id)
+        if not is_success:
+            print('have an error, continue after {} seconds'.format(Setting.get().error_wait_interval))
+            time.sleep(Setting.get().error_wait_interval)
+            continue
+        else:
+            MysqlUtil.insert_company(company)
+            return company
+
+
+def get_case_list_by_request(qcc_util, state, company_id, page_number):
+    print('get cases of the company {} in page {} by request'.format(company_id, page_number))
+    while True:
+        time.sleep(get_request_interval_seconds())
+        is_success, case_list, has_next_case_page = qcc_util.get_case_list(
+            page_number, company_id)
+        if not is_success:
+            print('retry to get the case list after {} seconds'.format(
+                Setting.get().error_wait_interval))
+            time.sleep(Setting.get().error_wait_interval)
+            continue
+        else:
+            break
+
+    begin = 0
+    if len(state.current_case_id) > 0:
+        for i in range(len(case_list)):
+            if state.current_case_id == case_list[i].case_id:
+                begin = i
+                break
+    print('the case count is {}, collect from index {}'.format(len(case_list), begin))
+    for index in range(begin, len(case_list)):
+        case = case_list[index]
+        print('collect case {}'.format(case.case_id))
+        state.current_case_id = case.case_id
+        StateUtil.get().save_state(state)
+
+        # if not collect_all and int(case.unfulfilled_amount) < Setting.get().unfulfilled_amount:
+        #     print('{} is ignored, the unfulfilled amount is less than 1000000'.format(case.case_id))
+        #     continue
+
+        if MysqlUtil.is_company_exist(case.judgment_debtor):
+            print('the company {} exist, not need to collect again'.format(case.judgment_debtor))
+        else:
+            get_company_info_by_request(qcc_util, case.judgment_debtor)
+
+        if MysqlUtil.is_company_exist(case.judgment_creditor):
+            print('the company {} exist, not need to collect again'.format(case.judgment_creditor))
+        else:
+            get_company_info_by_request(qcc_util, case.judgment_creditor)
+
+        # if not collect_all and (
+        #         ignore_case(case.case_id, judgment_debtor) or ignore_case(case.case_id, judgment_creditor)):
+        #     index += 1
+        #     continue
+
+        MysqlUtil.insert_case(case)
+        print('insert case {}'.format(case.case_id))
+    return has_next_case_page
+
+
+def get_company_list_by_request(qcc_util, state, filter_key, filter_region, page_number):
+    print('get companies in page {} by request'.format(page_number))
+    while True:
+        time.sleep(get_request_interval_seconds())
+        is_success, company_list, has_next_company_page = qcc_util.get_company_list(
+            page_number, filter_key, filter_region)
+        if not is_success:
+            print('retry to get the company list after {} seconds'.format(Setting.get().error_wait_interval))
+            time.sleep(Setting.get().error_wait_interval)
+            continue
+        else:
+            break
+
+    company_begin_index = 0
+    if len(state.current_company_id) > 0:
+        for i in range(len(company_list)):
+            if company_list[i] == state.current_company_id:
+                company_begin_index = i
+                break
+    print('the company count is {}, collect from index {}'.format(len(company_list), company_begin_index))
+
+    for i in range(company_begin_index, len(company_list)):
+        company = company_list[i]
+        if i > company_begin_index:
+            state.set_current_company_id(company)
+            StateUtil.get().save_state(state)
+
+        has_next_case_page = True
+        case_page_number = state.current_case_page_index
+        while has_next_case_page:
+            has_next_case_page = get_case_list_by_request(qcc_util, state, company, case_page_number)
+            if has_next_case_page:
+                case_page_number += 1
+                state.set_current_case_page_index(case_page_number)
+                StateUtil.get().save_state(state)
+    return has_next_company_page
+
+
 def main():
     if not MysqlUtil.connect():
         return False
@@ -30,7 +137,6 @@ def main():
     if not MysqlUtil.create_table_if_need():
         return False
 
-    collect_all = Setting.get().collect_all
     filter_keys = Setting.get().filter.key
     filter_regions = Setting.get().filter.region
     for filter_key in filter_keys:
@@ -42,70 +148,21 @@ def main():
             if not qcc_util.get_basic_info():
                 return False
 
-            company_page_number = StateUtil.get().get_page_index(filter_key, filter_region)
-            print('continue to collect data from page {}'.format(company_page_number))
+            state = StateUtil.get().get_state(filter_key, filter_region)
+            print('continue to collect data from the following state')
+            print(state)
 
+            company_page_number = state.current_company_page_index
             has_next_company_page = True
             while has_next_company_page:
-                StateUtil.get().set_page_index(filter_key, filter_region, company_page_number)
-                time.sleep(Setting.get().req_interval)
-                company_page_number += 1
-                is_success, company_list, has_next_company_page = qcc_util.get_company_list(
-                    company_page_number, filter_key, filter_region)
-                if not is_success:
-                    print('retry to get the company list after {} seconds'.format(Setting.get().error_wait_interval))
-                    time.sleep(Setting.get().error_wait_interval)
-                    has_next_company_page = True
-                    company_page_number -= 1
-                    continue
-
-                for company in company_list:
-                    has_next_case_page = True
-                    case_page_number = 0
-                    while has_next_case_page:
-                        time.sleep(Setting.get().req_interval)
-                        case_page_number += 1
-                        is_success, case_list, has_next_case_page = qcc_util.get_case_list(
-                            case_page_number, company)
-                        if not is_success:
-                            print('retry to get the case list after {} seconds'.format(
-                                Setting.get().error_wait_interval))
-                            time.sleep(Setting.get().error_wait_interval)
-                            has_next_case_page = True
-                            case_page_number -= 1
-                            continue
-
-                        index = 0
-                        while index < len(case_list):
-                            case = case_list[index]
-                            if not collect_all and int(case.unfulfilled_amount) < Setting.get().unfulfilled_amount:
-                                print('{} is ignored, the unfulfilled amount is less than 1000000'.format(case.case_id))
-                                index += 1
-                                continue
-
-                            time.sleep(Setting.get().req_interval)
-                            is_success, judgment_debtor = qcc_util.get_company_info(case.judgment_debtor)
-                            if not is_success:
-                                print('have an error, continue after {} seconds'.format(Setting.get().error_wait_interval))
-                                time.sleep(Setting.get().error_wait_interval)
-                                continue
-
-                            time.sleep(Setting.get().req_interval)
-                            is_success, judgment_creditor = qcc_util.get_company_info(case.judgment_creditor)
-                            if not is_success:
-                                print('have an error, continue after {} seconds'.format(Setting.get().error_wait_interval))
-                                time.sleep(Setting.get().error_wait_interval)
-                                continue
-
-                            if not collect_all and (ignore_case(case.case_id, judgment_debtor) or ignore_case(case.case_id, judgment_creditor)):
-                                index += 1
-                                continue
-
-                            MysqlUtil.insert_company(judgment_debtor)
-                            MysqlUtil.insert_company(judgment_creditor)
-                            MysqlUtil.insert_case(case)
-                            print('insert {}'.format(case.case_id))
-                            index += 1
+                has_next_company_page = get_company_list_by_request(qcc_util, state, filter_key,
+                                                                    filter_region, company_page_number)
+                if has_next_company_page:
+                    company_page_number += 1
+                    state.set_current_company_page_index(company_page_number)
+                    StateUtil.get().save_state(state)
+                else:
+                    break
     return True
 
 
@@ -117,6 +174,4 @@ if __name__ == "__main__":
             time.sleep(60)
         else:
             print('finish to collect all data')
-            print('continue to collect all data after {} hours'.format(Setting.get().next_interval/3600))
-            StateUtil.get().reset()
-            time.sleep(Setting.get().next_interval)
+            break

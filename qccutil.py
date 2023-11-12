@@ -15,6 +15,11 @@ class QccUtil:
         self.host = 'https://www.qcc.com'
         self.pid = ''
         self.tid = ''
+        self.request_count = 0
+
+    def increase_request_count(self):
+        self.request_count += 1
+        print('total request count is {}'.format(self.request_count))
 
     # 获取PID和TID
     def get_basic_info(self):
@@ -27,7 +32,7 @@ class QccUtil:
             self.__append_headers(headers)
             response = requests.get(url, headers=headers)
             if not response.ok:
-                print("failed to get the basic info, error is ", response)
+                print("failed to get the basic info, error is {}".format(response))
                 return False
             else:
                 html_content = response.text
@@ -41,7 +46,7 @@ class QccUtil:
                 print("pid is {}, tid is {}".format(self.pid, self.tid))
                 return True
         except requests.exceptions.RequestException as e:
-            print("failed to get the basic info, error is ", e)
+            print("failed to get the basic info, error is {}".format(e))
             return False
 
     # 按过滤条件搜索公司，返回 issuccess, companyid list, has next page
@@ -65,22 +70,29 @@ class QccUtil:
             self.__append_headers(headers)
             response = requests.post(url, headers=headers, data=body.encode('utf-8'))
             if not response.ok:
-                print("failed to get the company list info, error is ", response)
+                print("failed to get the company list info, error is {}".format(response))
                 return error_result
             else:
-                company_list = []
-                root = json.loads(response.content.decode('utf-8'))
-                for company in root['Result']:
-                    print(company['KeyNo'] + '   ' + company['Name'])
-                    company_list.append(company['KeyNo'])
-                total_records = root['Paging']['TotalRecords']
-                page_size = root['Paging']['PageSize']
-                page_index = root['Paging']['PageIndex']
-                page_count = (total_records-1) // page_size + 1
-                has_next_page = page_index < min(page_count, Setting.get().max_page_index)
-                return True, company_list, has_next_page
+                self.increase_request_count()
+                try:
+                    company_list = []
+                    data = response.content.decode('utf-8')
+                    root = json.loads(data)
+                    for company in root['Result']:
+                        print(company['KeyNo'] + '   ' + company['Name'])
+                        company_list.append(company['KeyNo'])
+                    total_records = root['Paging']['TotalRecords']
+                    page_size = root['Paging']['PageSize']
+                    page_index = root['Paging']['PageIndex']
+                    page_count = (total_records-1) // page_size + 1
+                    has_next_page = page_index < min(page_count, Setting.get().max_page_index)
+                    return True, company_list, has_next_page
+                except Exception as e:
+                    print('failed to parse the company list, error is {}'.format(e))
+                    print('data is: {}'.format(data))
+                    return error_result
         except requests.exceptions.RequestException as e:
-            print("failed to get the company list, error is ", e)
+            print("failed to get the company list, error is {}".format(e))
             return error_result
 
     # 获取终本案件列表，返回 issuccess, case list, has next page
@@ -92,50 +104,57 @@ class QccUtil:
             hash1, hash2 = QccUtil.calc_hash(uri, '{}', self.tid)
             headers = {
                 'Accept': 'application/json, text/plain, */*',
-                'Referer': self.host + '/csusong/34ecbc151474af17678d3fc817fcc956.html',
+                'Referer': self.host + '/csusong/{}.html'.format(company_id),
                 'X-Pid': self.pid,
                 hash1: hash2
             }
             self.__append_headers(headers)
             response = requests.get(url, headers=headers)
             if not response.ok:
-                print("failed to get the case list info, error is ", response)
+                print("failed to get the case list info, error is {}".format(response))
                 return error_result
             else:
-                case_list = []
-                root = json.loads(response.content.decode('utf-8'))
-                for case_json in root['data']:
-                    if len(case_json['NameAndKeyNo']) == 0 or len(case_json['SqrInfo']) == 0:
-                        continue
-                    judgment_debtor: str = case_json['NameAndKeyNo'][0]['Name']
-                    if judgment_debtor.find('有限公司') == -1:
-                        continue
-                    judgment_creditor: str = case_json['SqrInfo'][0]['Name']
-                    if judgment_creditor.find('有限公司') == -1:
-                        continue
+                self.increase_request_count()
+                try:
+                    case_list = []
+                    data = response.content.decode('utf-8')
+                    root = json.loads(data)
+                    for case_json in root['data']:
+                        if len(case_json['NameAndKeyNo']) == 0 or len(case_json['SqrInfo']) == 0:
+                            continue
+                        judgment_debtor: str = case_json['NameAndKeyNo'][0]['Name']
+                        if judgment_debtor.find('有限公司') == -1:
+                            continue
+                        judgment_creditor: str = case_json['SqrInfo'][0]['Name']
+                        if judgment_creditor.find('有限公司') == -1:
+                            continue
 
-                    case = Case()
-                    case.collect_time = int(time.time())
-                    case.case_id = case_json['CaseNo']
-                    local_time = datetime.datetime.fromtimestamp(case_json['EndDate'])
-                    case.finality_date = local_time.strftime("%Y-%m-%d")
-                    case.executing_court = case_json['Court']
-                    case.judgment_debtor = case_json['NameAndKeyNo'][0]['KeyNo']
-                    case.judgment_creditor = case_json['SqrInfo'][0]['KeyNo']
-                    case.unfulfilled_amount = case_json['FailureAct']
-                    print('case: {}'.format(case.case_id))
-                    case_list.append(case)
+                        case = Case()
+                        case.collect_time = int(time.time())
+                        case.case_id = case_json['CaseNo']
+                        local_time = datetime.datetime.fromtimestamp(case_json['EndDate'])
+                        case.finality_date = local_time.strftime("%Y-%m-%d")
+                        case.executing_court = case_json['Court']
+                        case.judgment_debtor = case_json['NameAndKeyNo'][0]['KeyNo']
+                        case.judgment_creditor = case_json['SqrInfo'][0]['KeyNo']
+                        case.unfulfilled_amount = case_json['FailureAct']
+                        print('case: {}'.format(case.case_id))
+                        case_list.append(case)
 
-                has_next_page = False
-                if 'total' in root['pageInfo']:
-                    total_records = root['pageInfo']['total']
-                    page_size = root['pageInfo']['pageSize']
-                    page_index = root['pageInfo']['pageIndex']
-                    page_count = (total_records - 1) // page_size + 1
-                    has_next_page = page_index < page_count
-                return True, case_list, has_next_page
+                    has_next_page = False
+                    if len(case_list) > 0 and 'total' in root['pageInfo']:
+                        total_records = root['pageInfo']['total']
+                        page_size = root['pageInfo']['pageSize']
+                        page_index = root['pageInfo']['pageIndex']
+                        page_count = (total_records - 1) // page_size + 1
+                        has_next_page = page_index < page_count
+                    return True, case_list, has_next_page
+                except Exception as e:
+                    print('failed to parse the case list, error is {}'.format(e))
+                    print('data is: {}'.format(data))
+                    return error_result
         except requests.exceptions.RequestException as e:
-            print("failed to get the case list, error is ", e)
+            print("failed to get the case list, error is {}".format(e))
             return error_result
 
     # 获取公司信息，返回 issuccess, company对象
@@ -146,42 +165,48 @@ class QccUtil:
             url = self.host + uri
             headers = {
                 'Accept': 'application/json, text/plain, */*',
-                'Referer': self.host + '/csusong/34ecbc151474af17678d3fc817fcc956.html',
+                'Referer': self.host + '/csusong/{}.html'.format(company_id),
             }
             self.__append_headers(headers)
             response = requests.get(url, headers=headers)
             if not response.ok:
-                print("failed to get the company info, error is ", response)
+                print("failed to get the company info, error is {}".format(response))
                 return error_result
             else:
-                html_content = response.content.decode('utf-8')
-                start_index = html_content.find('window.__INITIAL_STATE__=') + len('window.__INITIAL_STATE__=')
-                end_index = html_content.find('};', start_index) + 1
-                json_string = html_content[start_index: end_index]
-                root = json.loads(json_string)
+                self.increase_request_count()
+                html_content = ''
+                try:
+                    html_content = response.content.decode('utf-8')
+                    start_index = html_content.find('window.__INITIAL_STATE__=') + len('window.__INITIAL_STATE__=')
+                    end_index = html_content.find('};', start_index) + 1
+                    json_string = html_content[start_index: end_index]
+                    root = json.loads(json_string)
 
-                company = Company()
-                company.company_id = company_id
-                company.company_name = root['company']['companyDetail']['Name']
-                company.phone_number = self.__get_company_phone_number(root)
-                company.lr = self.__get_company_lr(root)
-                company.region = self.__get_company_region(root)
-                company.rc = root['company']['companyDetail']['RegistCapi']
-                rec_cap = root['company']['companyDetail']['RecCap']
-                if rec_cap is not None:
-                    company.pc = rec_cap
-                company.status = root['company']['companyDetail']['Status']
-                partners = root['company']['companyDetail']['Partners']
-                for partner in partners:
-                    share_holder = ShareHolder()
-                    share_holder.company_id = company_id
-                    share_holder.name = partner['StockName']
-                    share_holder.rate = partner['StockPercent']
-                    company.share_holders.append(share_holder)
-
-                return True, company
+                    company = Company()
+                    company.company_id = company_id
+                    company.company_name = root['company']['companyDetail']['Name']
+                    company.phone_number = self.__get_company_phone_number(root)
+                    company.lr = self.__get_company_lr(root)
+                    company.region = self.__get_company_region(root)
+                    company.rc = root['company']['companyDetail']['RegistCapi']
+                    rec_cap = root['company']['companyDetail']['RecCap']
+                    if rec_cap is not None:
+                        company.pc = rec_cap
+                    company.status = root['company']['companyDetail']['Status']
+                    partners = root['company']['companyDetail']['Partners']
+                    for partner in partners:
+                        share_holder = ShareHolder()
+                        share_holder.company_id = company_id
+                        share_holder.name = partner['StockName']
+                        share_holder.rate = partner['StockPercent']
+                        company.share_holders.append(share_holder)
+                    return True, company
+                except Exception as e:
+                    print('have an exception: {}'.format(e))
+                    print('response data: {}'.format(html_content))
+                    return error_result
         except requests.exceptions.RequestException as e:
-            print("failed to get the company information, error is ", e)
+            print("failed to get the company information, error is {}".format(e))
             return error_result
 
     @staticmethod

@@ -2,11 +2,34 @@ import json
 import os
 
 
-class CompanyPageIndex:
+class StateItem:
     def __init__(self):
         self.filter_key = ''
-        self.filter_region = {}
-        self.page_index = 0
+        self.filter_region = {"pr": "", "cc": ""}
+        self.current_company_page_index = 1
+        self.current_company_id = ""
+        self.current_case_page_index = 1
+        self.current_case_id = ""
+
+    def __str__(self):
+        return 'the state is filter key: {}, filter region: {}, company page index: {}, company id: {}, case page index: {}, case id: {}'\
+                .format(self.filter_key, self.filter_region, self.current_company_page_index, self.current_company_id,
+                        self.current_case_page_index, self.current_case_id)
+
+    def set_current_company_page_index(self, page_index):
+        self.current_company_page_index = page_index
+        self.current_company_id = ''
+        self.current_case_page_index = 1
+        self.current_case_id = ""
+
+    def set_current_company_id(self, company_id):
+        self.current_company_id = company_id
+        self.current_case_page_index = 1
+        self.current_case_id = ""
+
+    def set_current_case_page_index(self, page_index):
+        self.current_case_page_index = page_index
+        self.current_case_id = ""
 
 
 class StateUtil:
@@ -19,7 +42,7 @@ class StateUtil:
         return StateUtil.__instance
 
     def __init__(self):
-        self.company_page_index = []
+        self.states = []
         self.__load()
 
     def __load(self):
@@ -29,43 +52,54 @@ class StateUtil:
             json_data = file.read()
             root = json.loads(json_data)
 
-            for item in root['company_list']:
-                page_index = CompanyPageIndex()
-                page_index.filter_key = item['filter_key']
-                page_index.filter_region = item['filter_region']
-                page_index.page_index = item['page_index']
-                self.company_page_index.append(page_index)
+            for item in root['state']:
+                state_item = StateItem()
+                state_item.filter_key = item['filter_key']
+                if state_item.filter_key == '':
+                    continue
+                state_item.filter_region = item['filter_region']
+                state_item.current_company_page_index = item['current_company_page_index']
+                state_item.current_company_id = item['current_company_id']
+                state_item.current_case_page_index = item['current_case_page_index']
+                state_item.current_case_id = item['current_case_id']
+                self.states.append(state_item)
 
     def save(self):
         current_file_path = os.path.dirname(os.path.abspath(__file__))
         config_file_path = os.path.join(current_file_path, r'configs\states.json')
         with open(config_file_path, "w", encoding='utf-8') as file:
-            root = {'company_list': []}
-            for item in self.company_page_index:
-                company_list_item = {'filter_key': item.filter_key, 'filter_region': item.filter_region, 'page_index': item.page_index}
-                root['company_list'].append(company_list_item)
-            json.dump(root, file)
+            root = {'state': []}
+            for item in self.states:
+                state_item = {'filter_key': item.filter_key,
+                              'filter_region': item.filter_region,
+                              'current_company_page_index': item.current_company_page_index,
+                              'current_company_id': item.current_company_id,
+                              'current_case_page_index': item.current_case_page_index,
+                              'current_case_id': item.current_case_id}
+                root['state'].append(state_item)
+            json.dump(root, file, indent=4)
 
-    def get_page_index(self, filter_key, filter_region):
-        for item in self.company_page_index:
+    def get_state(self, filter_key, filter_region):
+        for item in self.states:
             if item.filter_key == filter_key and item.filter_region['pr'] == filter_region['pr'] and item.filter_region['cc'] == filter_region['cc']:
-                return item.page_index
-        return 0
+                return item
 
-    def set_page_index(self, filter_key, filter_region, page_index):
-        for item in self.company_page_index:
-            if item.filter_key == filter_key and item.filter_region['pr'] == filter_region['pr'] and item.filter_region['cc'] == filter_region['cc']:
-                item.page_index = page_index
-                self.save()
-                return
+        state = StateItem()
+        state.filter_key = filter_key
+        state.filter_region['pr'] = filter_region['pr']
+        state.filter_region['cc'] = filter_region['cc']
+        return state
 
-        new_page_index = CompanyPageIndex()
-        new_page_index.page_index = page_index
-        new_page_index.filter_key = filter_key
-        new_page_index.filter_region = filter_region
-        self.company_page_index.append(new_page_index)
+    def save_state(self, state):
+        for item in self.states:
+            if item.filter_key == state.filter_key and item.filter_region['pr'] == state.filter_region['pr']\
+                    and item.filter_region['cc'] == state.filter_region['cc']:
+                self.states.remove(item)
+                break
+
+        self.states.append(state)
         self.save()
 
     def reset(self):
-        self.company_page_index.clear()
+        self.states.clear()
         self.save()

@@ -203,3 +203,27 @@ class MysqlUtil:
 
         # Close the cursor
         cursor.close()
+
+    @staticmethod
+    def is_company_exist(company_id):
+        # Check if the connection is successful
+        if MysqlUtil.connection is None or not MysqlUtil.connection.is_connected():
+            print("not connected to MySQL database")
+            return False
+
+        # Create a cursor object for executing SQL statements
+        cursor = MysqlUtil.connection.cursor()
+
+        # Define the Select statement
+        select_company_query = """
+                            SELECT * FROM {}
+                            WHERE company_id = %s
+                        """.format(MysqlUtil.company_table_name)
+        select_company_query_data = [company_id]
+
+        cursor.execute(select_company_query, select_company_query_data)
+        result = cursor.fetchone()
+        if result:
+            return True
+        else:
+            return False
