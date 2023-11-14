@@ -58,7 +58,7 @@ class QccUtil:
             filter_string = '{"f":["VMN","N_SBKP2","ZX"],"r":[{"pr":"%s","cc":[%s]}]}' % (region['pr'], region['cc'])
             body = {'searchKey': key, 'pageIndex': page_number, 'pageSize': 20, 'filter': filter_string}
             body = json.dumps(body, ensure_ascii=False)
-            body = body.replace(' ','')
+            body = body.replace(' ', '')
             hash1, hash2 = QccUtil.calc_hash(uri, body, self.tid)
             headers = {
                 'Content-Type': 'application/json',
@@ -74,6 +74,7 @@ class QccUtil:
                 return error_result
             else:
                 self.increase_request_count()
+                data = ''
                 try:
                     company_list = []
                     data = response.content.decode('utf-8')
@@ -115,12 +116,14 @@ class QccUtil:
                 return error_result
             else:
                 self.increase_request_count()
+                data = ''
                 try:
                     case_list = []
                     data = response.content.decode('utf-8')
                     root = json.loads(data)
                     for case_json in root['data']:
-                        if len(case_json['NameAndKeyNo']) == 0 or len(case_json['SqrInfo']) == 0:
+                        if len(case_json['NameAndKeyNo']) == 0 or len(case_json['SqrInfo']) == 0\
+                                or len(case_json['SqrInfo'][0]['KeyNo']) == 0:
                             continue
                         judgment_debtor: str = case_json['NameAndKeyNo'][0]['Name']
                         if judgment_debtor.find('有限公司') == -1:
@@ -301,13 +304,10 @@ class QccUtil:
 
 
 def test():
-    uri = '/api/datalist/endexecutioncaselist?isnewagg=true&keyno=34ecbc151474af17678d3fc817fcc956&pageindex=1'
-    body = '{}'
-    tid = '8870f3fecc389da61e700132ffbb6365'
     qcc_util = QccUtil()
-    hash1, hash2 = qcc_util.calc_hash(uri, body, tid)
-    print(hash1)
-    print(hash2)
+    qcc_util.pid = 'a7ccb704bae88e97517226407dace7f3'
+    qcc_util.tid = 'eba073051fd21f171b545f0dce4756fd'
+    qcc_util.get_case_list(2, 'c3655529e959237774ea0110059cb936')
 
 
 if __name__ == "__main__":
