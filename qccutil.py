@@ -191,10 +191,13 @@ class QccUtil:
                     company.phone_number = self.__get_company_phone_number(root)
                     company.lr = self.__get_company_lr(root)
                     company.region = self.__get_company_region(root)
-                    company.rc = root['company']['companyDetail']['RegistCapi']
-                    rec_cap = root['company']['companyDetail']['RecCap']
-                    if rec_cap is not None:
-                        company.pc = rec_cap
+                    regist_capi = root['company']['companyDetail']['RegistCapi']
+                    if regist_capi is not None:
+                        company.rc = regist_capi
+                    if 'RecCap' in root['company']['companyDetail']:
+                        rec_cap = root['company']['companyDetail']['RecCap']
+                        if rec_cap is not None:
+                            company.pc = rec_cap
                     company.status = root['company']['companyDetail']['Status']
                     partners = root['company']['companyDetail']['Partners']
                     for partner in partners:
@@ -275,40 +278,54 @@ class QccUtil:
     def __get_company_phone_number(self, root):
         phone_list = []
         contact_info_node = QccUtil.find_node_by_name('ContactInfo', root)
-        phone = contact_info_node['PhoneNumber']
-        if QccUtil.__is_mobile_number(phone):
-            phone_list.append(phone)
-        his_tel_list_node = QccUtil.find_node_by_name('HisTelList', root)
-        for item in his_tel_list_node:
-            phone = item['Tel']
-            if self.__is_mobile_number(phone):
+        if contact_info_node:
+            phone = contact_info_node['PhoneNumber']
+            if QccUtil.__is_mobile_number(phone):
                 phone_list.append(phone)
-                if len(phone_list) >= 10:
-                    break
+
+        his_tel_list_node = QccUtil.find_node_by_name('HisTelList', root)
+        if his_tel_list_node:
+            for item in his_tel_list_node:
+                phone = item['Tel']
+                if self.__is_mobile_number(phone):
+                    phone_list.append(phone)
+                    if len(phone_list) >= 10:
+                        break
         return str(phone_list)
 
     # 获取公司的法定代表人
     @staticmethod
     def __get_company_lr(root):
         lr = []
-        oper_list_node = root['company']['companyDetail']['MultipleOper']['OperList']
-        for item in oper_list_node:
-            lr.append(item['Name'])
+        if 'MultipleOper' in root['company']['companyDetail']:
+            oper_list_node = root['company']['companyDetail']['MultipleOper']['OperList']
+            for item in oper_list_node:
+                lr.append(item['Name'])
         return str(lr)
 
     # 获取公司所属地区
     @staticmethod
     def __get_company_region(root):
-        area = root['company']['companyDetail']['Area']
-        return area['Province'] + area['City'] + area['County']
+        if 'Area' in root['company']['companyDetail']:
+            area = root['company']['companyDetail']['Area']
+            return area['Province'] + area['City'] + area['County']
+        else:
+            return ''
 
 
-def test():
+def test_case_list():
     qcc_util = QccUtil()
     qcc_util.pid = 'a7ccb704bae88e97517226407dace7f3'
     qcc_util.tid = 'eba073051fd21f171b545f0dce4756fd'
     qcc_util.get_case_list(2, 'c3655529e959237774ea0110059cb936')
 
 
+def test_get_company_info():
+    qcc_util = QccUtil()
+    qcc_util.pid = 'a7ccb704bae88e97517226407dace7f3'
+    qcc_util.tid = 'eba073051fd21f171b545f0dce4756fd'
+    qcc_util.get_company_info('97b01e0441e072671b6120a808e26dbc')
+
+
 if __name__ == "__main__":
-    test()
+    test_get_company_info()
