@@ -131,6 +131,8 @@ class QccUtil:
                         judgment_creditor: str = case_json['SqrInfo'][0]['Name']
                         if judgment_creditor.find('有限公司') == -1:
                             continue
+                        if case_json['FailureAct'] is None or len(case_json['FailureAct']) == 0:
+                            continue
 
                         case = Case()
                         case.collect_time = int(time.time())
@@ -326,6 +328,11 @@ def test_get_company_info():
     qcc_util.tid = 'eba073051fd21f171b545f0dce4756fd'
     qcc_util.get_company_info('ba9e6e4e0ae18823f6c437a69cf4b7bb')
 
+def test_get_case_list():
+    qcc_util = QccUtil()
+    qcc_util.pid = 'a7ccb704bae88e97517226407dace7f3'
+    qcc_util.tid = 'eba073051fd21f171b545f0dce4756fd'
+    qcc_util.get_case_list(3, '10c0cc3603892ae1b52dbe51ab01d2e3')
 
 if __name__ == "__main__":
-    test_get_company_info()
+    test_get_case_list()
