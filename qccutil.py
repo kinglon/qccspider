@@ -280,7 +280,7 @@ class QccUtil:
         contact_info_node = QccUtil.find_node_by_name('ContactInfo', root)
         if contact_info_node:
             phone = contact_info_node['PhoneNumber']
-            if QccUtil.__is_mobile_number(phone):
+            if phone and QccUtil.__is_mobile_number(phone):
                 phone_list.append(phone)
 
         his_tel_list_node = QccUtil.find_node_by_name('HisTelList', root)
@@ -324,7 +324,7 @@ def test_get_company_info():
     qcc_util = QccUtil()
     qcc_util.pid = 'a7ccb704bae88e97517226407dace7f3'
     qcc_util.tid = 'eba073051fd21f171b545f0dce4756fd'
-    qcc_util.get_company_info('97b01e0441e072671b6120a808e26dbc')
+    qcc_util.get_company_info('ba9e6e4e0ae18823f6c437a69cf4b7bb')
 
 
 if __name__ == "__main__":

@@ -31,7 +31,8 @@ class Setting:
         self.error_wait_interval = 500
         self.next_interval = 24*3600
         self.max_page_index = 250
-        self.unfulfilled_amount = 1000001
+        self.unfulfilled_amount = 0
+        self.unfulfilled_amount_max = 0
         self.collect_all = False
         self.cookie = {}
         self.filter = Filter()
@@ -50,6 +51,7 @@ class Setting:
             self.next_interval = root['next_interval'] * 3600
             self.max_page_index = root['max_page_index']
             self.unfulfilled_amount = root['unfulfilled_amount']
+            self.unfulfilled_amount_max = root['unfulfilled_amount_max']
             self.collect_all = root['collect_all']
 
             self.cookie['acw_tc'] = root['cookie']['acw_tc']
