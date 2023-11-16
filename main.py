@@ -70,14 +70,14 @@ def get_case_list_by_request(qcc_util, state, company_id, page_number):
 
         unfulfilled_amount_min = Setting.get().unfulfilled_amount
         unfulfilled_amount_max = Setting.get().unfulfilled_amount_max
+        unfulfilled_amount = int(float(case.unfulfilled_amount))
         if (unfulfilled_amount_min != 0 or unfulfilled_amount_max != 0)\
-            and (int(case.unfulfilled_amount) < unfulfilled_amount_min
-            or int(case.unfulfilled_amount) > unfulfilled_amount_max):
+            and (unfulfilled_amount < unfulfilled_amount_min
+            or unfulfilled_amount > unfulfilled_amount_max):
             print('{} is ignored, the unfulfilled amount is not in [{},{}]'.format(case.case_id,
                                                                                    unfulfilled_amount_min,
                                                                                    unfulfilled_amount_max))
             continue
-
         if MysqlUtil.is_company_exist(case.judgment_debtor):
             print('the company {} exist, not need to collect again'.format(case.judgment_debtor))
         else:
