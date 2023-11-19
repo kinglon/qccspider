@@ -1,5 +1,6 @@
 import mysql.connector
 from setting import Setting
+import time
 
 
 class MysqlUtil:
@@ -28,6 +29,22 @@ class MysqlUtil:
             return False
         else:
             return True
+
+    @staticmethod
+    def ensure_connect():
+        while True:
+            if MysqlUtil.connection is None or not MysqlUtil.connection.is_connected():
+                print("not connected to MySQL database, try to reconnect after 2 seconds")
+                time.sleep(2)
+                MysqlUtil.connection = mysql.connector.connect(
+                    host=Setting.get().mysql.host,
+                    port=Setting.get().mysql.port,
+                    user=Setting.get().mysql.user,
+                    password=Setting.get().mysql.password,
+                    database=Setting.get().mysql.database
+                )
+            else:
+                break
 
     @staticmethod
     def __create_database_if_need():
@@ -63,10 +80,7 @@ class MysqlUtil:
 
     @staticmethod
     def create_table_if_need():
-        # Check if the connection is successful
-        if MysqlUtil.connection is None or not MysqlUtil.connection.is_connected():
-            print("not connected to MySQL database")
-            return False
+        MysqlUtil.ensure_connect()
 
         # Create a cursor object for executing SQL statements
         cursor = MysqlUtil.connection.cursor()
@@ -123,10 +137,7 @@ class MysqlUtil:
 
     @staticmethod
     def insert_case(case):
-        # Check if the connection is successful
-        if MysqlUtil.connection is None or not MysqlUtil.connection.is_connected():
-            print("not connected to MySQL database")
-            return False
+        MysqlUtil.ensure_connect()
 
         # Create a cursor object for executing SQL statements
         cursor = MysqlUtil.connection.cursor()
@@ -159,10 +170,7 @@ class MysqlUtil:
 
     @staticmethod
     def insert_company(company):
-        # Check if the connection is successful
-        if MysqlUtil.connection is None or not MysqlUtil.connection.is_connected():
-            print("not connected to MySQL database")
-            return False
+        MysqlUtil.ensure_connect()
 
         # Create a cursor object for executing SQL statements
         cursor = MysqlUtil.connection.cursor()
@@ -206,10 +214,7 @@ class MysqlUtil:
 
     @staticmethod
     def is_company_exist(company_id):
-        # Check if the connection is successful
-        if MysqlUtil.connection is None or not MysqlUtil.connection.is_connected():
-            print("not connected to MySQL database")
-            return False
+        MysqlUtil.ensure_connect()
 
         # Create a cursor object for executing SQL statements
         cursor = MysqlUtil.connection.cursor()

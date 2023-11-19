@@ -39,6 +39,9 @@ class Setting:
         self.mysql = MySqlSetting()
         self.__load()
 
+    def reload(self):
+        self.__load()
+
     def __load(self):
         current_file_path = os.path.dirname(os.path.abspath(__file__))
         config_file_path = os.path.join(current_file_path, r'configs\configs.json')
@@ -58,8 +61,10 @@ class Setting:
             self.cookie['QCCSESSID'] = root['cookie']['QCCSESSID']
             self.cookie['qcc_did'] = root['cookie']['qcc_did']
 
+            self.filter.key.clear()
             for item in root['filter']['key']:
                 self.filter.key.append(item)
+            self.filter.region.clear()
             for item in root['filter']['region']:
                 self.filter.region.append(item)
 

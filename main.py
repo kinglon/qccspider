@@ -27,6 +27,7 @@ def ignore_case(case_id, company):
 def get_request_interval_seconds():
     return random.randint(10, Setting.get().req_interval)
 
+
 def get_company_info_by_request(qcc_util, company_id):
     print('get the information of the company {} by request'.format(company_id))
     while True:
@@ -35,6 +36,7 @@ def get_company_info_by_request(qcc_util, company_id):
         if not is_success:
             print('have an error, continue after {} seconds'.format(Setting.get().error_wait_interval))
             time.sleep(Setting.get().error_wait_interval)
+            Setting.get().reload()
             continue
         else:
             MysqlUtil.insert_company(company)
@@ -51,6 +53,7 @@ def get_case_list_by_request(qcc_util, state, company_id, page_number):
             print('retry to get the case list after {} seconds'.format(
                 Setting.get().error_wait_interval))
             time.sleep(Setting.get().error_wait_interval)
+            Setting.get().reload()
             continue
         else:
             break
@@ -72,8 +75,7 @@ def get_case_list_by_request(qcc_util, state, company_id, page_number):
         unfulfilled_amount_max = Setting.get().unfulfilled_amount_max
         unfulfilled_amount = int(float(case.unfulfilled_amount))
         if (unfulfilled_amount_min != 0 or unfulfilled_amount_max != 0)\
-            and (unfulfilled_amount < unfulfilled_amount_min
-            or unfulfilled_amount > unfulfilled_amount_max):
+                and (unfulfilled_amount < unfulfilled_amount_min or unfulfilled_amount > unfulfilled_amount_max):
             print('{} is ignored, the unfulfilled amount is not in [{},{}]'.format(case.case_id,
                                                                                    unfulfilled_amount_min,
                                                                                    unfulfilled_amount_max))
@@ -107,6 +109,7 @@ def get_company_list_by_request(qcc_util, state, filter_key, filter_region, page
         if not is_success:
             print('retry to get the company list after {} seconds'.format(Setting.get().error_wait_interval))
             time.sleep(Setting.get().error_wait_interval)
+            Setting.get().reload()
             continue
         else:
             break
@@ -137,12 +140,6 @@ def get_company_list_by_request(qcc_util, state, filter_key, filter_region, page
 
 
 def main():
-    if not MysqlUtil.connect():
-        return False
-
-    if not MysqlUtil.create_table_if_need():
-        return False
-
     filter_keys = Setting.get().filter.key
     filter_regions = Setting.get().filter.region
     for filter_key in filter_keys:
@@ -152,6 +149,7 @@ def main():
             qcc_util = QccUtil()
             time.sleep(Setting.get().req_interval)
             if not qcc_util.get_basic_info():
+                Setting.get().reload()
                 return False
 
             state = StateUtil.get().get_state(filter_key, filter_region)
@@ -174,10 +172,11 @@ def main():
 
 if __name__ == "__main__":
     LogUtil.enable()
-    while True:
-        if not main():
-            print('failed to collect all data, it will continue after 60 seconds')
-            time.sleep(60)
-        else:
-            print('finish to collect all data')
-            break
+    if MysqlUtil.connect() and MysqlUtil.create_table_if_need():
+        while True:
+            if not main():
+                print('failed to collect all data, it will continue after 60 seconds')
+                time.sleep(60)
+            else:
+                print('finish to collect all data')
+                break
