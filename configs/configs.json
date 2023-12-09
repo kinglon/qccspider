@@ -13,11 +13,11 @@
 
     "collect_all": true,
     
-    "cookie":{
+    "cookie":[{
         "acw_tc":"7033781b16995259407403438e036655fc296110c5bf8cb23a9b5fe470",
         "QCCSESSID":"27810671584686b109e2942e95",
         "qcc_did":"2346d8f4-bae6-4ba4-87eb-0095443dd210"
-    },
+    }],
     
     "filter":{
         "key":["深圳"],

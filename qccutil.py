@@ -16,6 +16,7 @@ class QccUtil:
         self.pid = ''
         self.tid = ''
         self.request_count = 0
+        self.cookie_index = 0
 
     def increase_request_count(self):
         self.request_count += 1
@@ -33,6 +34,8 @@ class QccUtil:
             response = requests.get(url, headers=headers)
             if not response.ok:
                 print("failed to get the basic info, error is {}".format(response))
+                if response.status_code == 412:
+                    self.__switch_to_next_cookie()
                 return False
             else:
                 html_content = response.text
@@ -71,6 +74,8 @@ class QccUtil:
             response = requests.post(url, headers=headers, data=body.encode('utf-8'))
             if not response.ok:
                 print("failed to get the company list info, error is {}".format(response))
+                if response.status_code == 412:
+                    self.__switch_to_next_cookie()
                 return error_result
             else:
                 self.increase_request_count()
@@ -113,6 +118,8 @@ class QccUtil:
             response = requests.get(url, headers=headers)
             if not response.ok:
                 print("failed to get the case list info, error is {}".format(response))
+                if response.status_code == 412:
+                    self.__switch_to_next_cookie()
                 return error_result
             else:
                 self.increase_request_count()
@@ -176,6 +183,8 @@ class QccUtil:
             response = requests.get(url, headers=headers)
             if not response.ok:
                 print("failed to get the company info, error is {}".format(response))
+                if response.status_code == 412:
+                    self.__switch_to_next_cookie()
                 return error_result
             else:
                 self.increase_request_count()
@@ -245,13 +254,17 @@ class QccUtil:
     def __append_headers(self, headers):
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
         headers['Cookie'] = ''
-        for key, value in Setting.get().cookie.items():
+        for key, value in Setting.get().cookie[self.cookie_index].items():
             headers['Cookie'] += '{}={};'.format(key, value)
         headers['Origin'] = self.host
         headers['Sec-Ch-Ua-Platform'] = '"Windows"'
         headers['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8'
         headers['Accept-Encoding'] = 'gzip, deflate, br'
         return headers
+
+    def __switch_to_next_cookie(self):
+        self.cookie_index = (self.cookie_index + 1) % len(Setting.get().cookie)
+        print('switch to next cookie {}'.format(self.cookie_index))
 
     # 根据名字在JSON中查找节点
     @staticmethod
@@ -328,11 +341,13 @@ def test_get_company_info():
     qcc_util.tid = 'eba073051fd21f171b545f0dce4756fd'
     qcc_util.get_company_info('ba9e6e4e0ae18823f6c437a69cf4b7bb')
 
+
 def test_get_case_list():
     qcc_util = QccUtil()
     qcc_util.pid = 'a7ccb704bae88e97517226407dace7f3'
     qcc_util.tid = 'eba073051fd21f171b545f0dce4756fd'
     qcc_util.get_case_list(3, '10c0cc3603892ae1b52dbe51ab01d2e3')
+
 
 if __name__ == "__main__":
     test_get_case_list()

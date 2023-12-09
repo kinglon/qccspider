@@ -34,7 +34,7 @@ class Setting:
         self.unfulfilled_amount = 0
         self.unfulfilled_amount_max = 0
         self.collect_all = False
-        self.cookie = {}
+        self.cookie = []
         self.filter = Filter()
         self.mysql = MySqlSetting()
         self.__load()
@@ -56,10 +56,7 @@ class Setting:
             self.unfulfilled_amount = root['unfulfilled_amount']
             self.unfulfilled_amount_max = root['unfulfilled_amount_max']
             self.collect_all = root['collect_all']
-
-            self.cookie['acw_tc'] = root['cookie']['acw_tc']
-            self.cookie['QCCSESSID'] = root['cookie']['QCCSESSID']
-            self.cookie['qcc_did'] = root['cookie']['qcc_did']
+            self.cookie = root['cookie']
 
             self.filter.key.clear()
             for item in root['filter']['key']:
